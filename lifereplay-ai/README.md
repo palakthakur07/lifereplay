@@ -1,14 +1,15 @@
-# LifeReplay AI — Frontend Foundation
+# LifeReplay AI — Frontend Foundation & Dashboard
 
-This is **Phase 1** of LifeReplay AI: the design system and application
-shell that every future feature (Spaces, Chat, Search, Timeline, Tags,
-Notes, Insights, Collections) will be built on top of. There is no backend,
-no auth, and no AI functionality yet — this phase is purely the frontend
-foundation.
+**Phase 1** built the design system and application shell. **Phase 2**
+(this update) builds the full dashboard experience and the Spaces system on
+top of it: a real app shell with a collapsible sidebar and top bar, a
+welcoming Home dashboard, a browsable/searchable Spaces grid, a multi-step
+Create Space flow, and a Space detail page. There is still no backend —
+everything is realistic mock data held in React state, per the Phase 2
+brief.
 
-The one page in the app, `/`, is a **design foundation preview**: it exists
-to demonstrate every token and component working together, not as a
-landing page or product screen. Replace it once real features land.
+`/` redirects to `/dashboard`. The Phase 1 component showcase now lives at
+`/design-system` (linked from the dashboard header) rather than at the root.
 
 ## Stack
 
@@ -35,6 +36,27 @@ npm run build   # production build
 npm run start   # serve the production build
 npm run lint    # ESLint
 ```
+
+## Routes
+
+| Route | What's there |
+|---|---|
+| `/` | Redirects to `/dashboard` |
+| `/dashboard` | Home: welcome banner, stats, Continue Working, Quick Actions, Recent Spaces, Recent Activity, Favorites, Today's Summary, Suggested Templates |
+| `/spaces` | All Spaces — search, All/Favorites filter, Create Space |
+| `/spaces/[spaceId]` | Space detail — cover, progress, and placeholder tabs (Files, Notes, Timeline, Insights, AI Assistant, Tags). Unknown ids render a real 404. |
+| `/recent` | Spaces sorted by most recently updated |
+| `/favorites` | Pinned Spaces |
+| `/timeline` | Cross-Space activity feed (mock data) |
+| `/collections` | Placeholder — feature not yet built |
+| `/search` | Global search layout preview (UI only, no real results) |
+| `/settings` | Profile, appearance (real theme switching), notifications, storage — all UI-only aside from theme |
+| `/design-system` | The Phase 1 component/token showcase |
+
+Favoriting and creating a Space update local React state on whichever page
+you're on (dashboard, Spaces, Recent, Favorites) — there's no shared store
+yet, so state doesn't persist across a full page navigation. That's the
+natural seam for wiring up `services/spaces.ts` once a backend exists.
 
 ## Design system
 
@@ -70,20 +92,38 @@ accent-colored emphasis.
 
 ```
 src/
-  app/                    # Next.js App Router
-    layout.tsx            # Root layout: fonts, metadata, providers
-    globals.css           # Design tokens (color, type, radius, motion)
-    page.tsx              # Design foundation preview (temporary)
+  app/
+    layout.tsx              # Root layout: fonts, metadata, providers
+    globals.css              # Design tokens (color, type, radius, motion)
+    page.tsx                 # Redirects "/" -> "/dashboard"
+    design-system/page.tsx   # Phase 1 component/token showcase
+
+    (app)/                   # Route group sharing the AppShell layout
+      layout.tsx              # Wraps children in <AppShell>
+      dashboard/page.tsx
+      spaces/page.tsx
+      spaces/[spaceId]/page.tsx
+      recent/page.tsx
+      favorites/page.tsx
+      timeline/page.tsx
+      collections/page.tsx
+      search/page.tsx
+      settings/page.tsx
 
   components/
-    ui/                   # Design-system primitives (Button, Input, Card, Dialog, …)
-    layout/                # Container, PageWrapper, ThemeToggle
-    empty-states/          # EmptyState component
+    ui/                     # Design-system primitives (Button, Input, Card, Dialog, Tabs, Sheet, Avatar, Progress, …)
+    layout/                  # Sidebar, TopBar, AppShell, Breadcrumbs, Container, PageWrapper, ThemeToggle, GlobalSearchDialog
+    dashboard/                # SectionHeader, StatCard, WidgetCard, and the Home page's widgets
+    spaces/                   # SpaceCard, TemplateCard — domain components reused across Dashboard/Spaces/Recent/Favorites
+    empty-states/             # EmptyState component
 
-  features/                # One folder per product feature. Empty today —
-    spaces/                 # each contains a README describing what belongs
-    chat/                   # there once the feature is built. Nothing here
-    search/                 # should be implemented until its own phase.
+  features/                # One folder per product feature.
+    spaces/                  # The one feature built out in Phase 2:
+      components/             #   CreateSpaceDialog, SpaceDetailView
+      data/                    #   mock-spaces.ts, mock-templates.ts (stand in for services/ until there's a backend)
+      constants.ts             #   icon/color picker options
+    chat/                    # Still empty — see each folder's README
+    search/
     timeline/
     tags/
     notes/
@@ -91,42 +131,58 @@ src/
     collections/
 
   hooks/                  # Reusable hooks (useMediaQuery, toast helper)
-  providers/              # ThemeProvider + the app-wide Providers composition
-  lib/                    # utils (cn), motion presets
+  providers/              # ThemeProvider, SidebarProvider, Providers composition
+  lib/                    # utils (cn), motion presets, mock-data.ts (activity feed, timeAgo)
   services/               # Reserved for future API clients (empty for now)
-  types/                  # Shared foundation types (Space, ThemeMode)
-  constants/              # Site-level constants
+  types/                  # Shared foundation types (Space, SpaceTemplate, ActivityItem, NavItem)
+  constants/              # Site-level constants, sidebar nav config
   styles/                 # Reserved for additional stylesheets if needed
 ```
 
-## Component inventory (Phase 1)
+## Component inventory
 
 | Category | Components |
 |---|---|
 | Typography | `Typography.Display/H1/H2/H3/BodyLarge/Body/Small/Caption/Lead` |
 | Buttons | Primary, Secondary, Outline, Ghost, Destructive, Icon |
 | Inputs | Input, SearchInput, Textarea, Select, Checkbox, RadioGroup, Switch, Label |
-| Surfaces | Card, Badge, Separator |
-| Overlays | Dialog, Tooltip, DropdownMenu |
+| Surfaces | Card, Badge, Separator, Avatar, Progress |
+| Overlays | Dialog, Sheet, Tooltip, DropdownMenu, Tabs |
 | Feedback | Skeleton, Toaster (sonner), EmptyState |
-| Layout | Container, PageWrapper, ThemeToggle |
+| Shell | Sidebar (+ mobile Sheet drawer), TopBar, Breadcrumbs, AppShell, Container, PageWrapper, ThemeToggle, GlobalSearchDialog |
+| Dashboard | SectionHeader, StatCard, WidgetCard, WelcomeCard, QuickActions, ContinueWorking, RecentActivityWidget, FavoritesWidget, SuggestedTemplates, TodaySummaryWidget |
+| Spaces | SpaceCard (+ skeleton), TemplateCard, CreateSpaceDialog, SpaceDetailView |
 
 All components are in TypeScript, forward refs where relevant, and use the
 `cn()` helper (`clsx` + `tailwind-merge`) for safe class composition.
 
 ## Theming
 
-Dark mode is the default. Toggle via the sun/moon button in the preview
-page's header, or programmatically:
+Dark mode is the default. Toggle via the sun/moon button in the top bar, or
+the Appearance section in Settings, or programmatically:
 
 ```tsx
 import { useTheme } from "next-themes";
 const { theme, setTheme } = useTheme();
 ```
 
+## Accessibility notes
+
+- Every interactive element (nav links, buttons, form controls, the Create
+  Space flow's icon/color pickers) is reachable by keyboard and shows a
+  visible focus ring (`:focus-visible` in `globals.css`).
+- Sidebar nav links use `aria-current="page"`; toggles use `aria-pressed`;
+  icon-only buttons carry `aria-label`.
+- The mobile sidebar is a proper Radix Dialog-based Sheet, so it traps focus
+  and closes on Escape.
+- `prefers-reduced-motion` is respected globally.
+
 ## What's intentionally *not* here
 
-Per the Phase 1 brief, this foundation does not include: a landing page,
-authentication, a dashboard, a backend, AI features, a database, or APIs.
-Those belong to later phases and should be built as their own
-`features/*` modules using the primitives in `components/ui`.
+Per the Phase 2 brief: authentication, a real database, AI chat/search, OCR,
+embeddings, file upload, APIs, and file storage. Everything you see reading
+as "live" (favoriting, creating a Space, filtering, theme switching) is
+real frontend interactivity backed by local React state or `next-themes` —
+none of it talks to a server. Those integrations are the natural next phase,
+wired in at the seams already marked in `services/` and each `features/*`
+module.
